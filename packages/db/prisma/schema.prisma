@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ==========================================
+// CATEGORÍAS JERÁRQUICAS
+// ==========================================
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  description String?
+  icon        String?
+  color       String?
+  parentId    String?
+  parent      Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryTree")
+  documents   Document[]
+  sortOrder   Int        @default(0)
+  isActive    Boolean    @default(true)
+  level       String?    @db.VarChar(20) // "mundial", "region", "provincia", "centro"
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([parentId])
+  @@index([slug])
+  @@index([isActive])
+}
+
+// ==========================================
+// DOCUMENTOS GENERALES
+// ==========================================
+model Document {
+  id            String   @id @default(uuid())
+  title         String
+  slug          String   @unique
+  description   String?
+  content       String?  @db.Text // Texto plano para búsqueda
+  htmlContent   String?  @db.Text // HTML formateado
+  type          String   @db.VarChar(50) // "directorio", "mensaje", "circular", "reglamento", "formacion", "aguinaldo", "comunicado"
+  fileUrl       String?  // URL del PDF en S3/R2
+  fileName      String?  // Nombre original del archivo
+  fileSize      Int?     // Tamaño en bytes
+  coverImage    String?  // URL de imagen de portada
+  categoryId    String
+  category      Category @relation(fields: [categoryId], references: [id])
+  author        String?  @db.VarChar(200) // "Rector Mayor", "Coordinador Mundial", "Provincia"
+  authorRole    String?  @db.VarChar(50) // "rector_mayor", "coordinador_mundial", "provincia", "centro"
+  province      String?  @db.VarChar(10) // Código de provincia
+  center        String?  @db.VarChar(100) // Nombre del centro local
+  publishedAt   DateTime?
+  isPublished   Boolean  @default(false)
+  isFeatured    Boolean  @default(false)
+  downloadCount Int      @default(0)
+  viewCount     Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([categoryId])
+  @@index([type])
+  @@index([slug])
+  @@index([isPublished])
+  @@index([isFeatured])
+  @@index([publishedAt])
+  @@index([authorRole])
+  @@index([province])
+}
+
+// ==========================================
+// PVA - PROYECTO DE VIDA APOSTÓLICA
+// ==========================================
+model PvaSection {
+  id        String      @id @default(uuid())
+  title     String
+  slug      String      @unique
+  content   String      @db.Text
+  chapter   Int
+  article   Int?
+  section   String?     // Nombre de la sección dentro del artículo
+  sortOrder Int         @default(0)
+  parentId  String?
+  parent    PvaSection? @relation("PvaTree", fields: [parentId], references: [id])
+  children  PvaSection[] @relation("PvaTree")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([parentId])
+  @@index([slug])
+  @@index([chapter])
+}
+
+// ==========================================
+// BIBLIA
+// ==========================================
+model BibleBook {
+  id           String         @id @default(uuid())
+  name         String         @db.VarChar(100)
+  abbreviation String         @db.VarChar(10)
+  testament    String         @db.VarChar(5) // "AT" o "NT"
+  sortOrder    Int
+  chapters     BibleChapter[]
+
+  @@index([sortOrder])
+  @@index([testament])
+}
+
+model BibleChapter {
+  id           String       @id @default(uuid())
+  bookId       String
+  book         BibleBook    @relation(fields: [bookId], references: [id])
+  chapterNumber Int
+  verses       BibleVerse[]
+
+  @@unique([bookId, chapterNumber])
+  @@index([bookId])
+}
+
+model BibleVerse {
+  id         String       @id @default(uuid())
+  chapterId  String
+  chapter    BibleChapter @relation(fields: [chapterId], references: [id])
+  verseNumber Int
+  text       String       @db.Text
+
+  @@unique([chapterId, verseNumber])
+  @@index([chapterId])
+}
+
+// ==========================================
+// USUARIOS ADMINISTRADORES
+// ==========================================
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         String   @default("admin") @db.VarChar(20) // "admin", "superadmin"
+  isActive     Boolean  @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([email])
+}
+
+// ==========================================
+// FAVORITOS
+// ==========================================
+model Favorite {
+  id        String   @id @default(uuid())
+  deviceId  String   @db.VarChar(100)
+  itemType  String   @db.VarChar(20) // "document", "pva", "bible_verse"
+  itemId    String   @db.VarChar(100)
+  createdAt DateTime @default(now())
+
+  @@unique([deviceId, itemType, itemId])
+  @@index([deviceId])
+  @@index([itemType])
+}
+
+// ==========================================
+// DISPOSITIVOS
+// ==========================================
+model DeviceConfig {
+  deviceId   String   @id @db.VarChar(100)
+  province   String?  @db.VarChar(10) // "CAM"
+  center     String?  @db.VarChar(100)
+  lastSyncAt DateTime?
+  pushToken  String?  @db.VarChar(500)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([province])
+  @@index([center])
+}
+
+// ==========================================
+// NOTIFICACIONES
+// ==========================================
+model Notification {
+  id          String    @id @default(uuid())
+  title       String
+  body        String    @db.Text
+  type        String    @db.VarChar(50) // "new_document", "new_message", "alert", "formation"
+  targetLevel String    @db.VarChar(20) // "all", "provincia", "centro"
+  targetValue String?   @db.VarChar(100)
+  isPublished Boolean   @default(false)
+  sentAt      DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([isPublished])
+  @@index([type])
+  @@index([targetLevel])
+}
+
+// ==========================================
+// LOG DE ACTIVIDAD (audit trail)
+// ==========================================
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String   @db.VarChar(50) // "create", "update", "delete", "publish"
+  entity    String   @db.VarChar(50) // "document", "category", "pva", "bible", "notification"
+  entityId  String
+  details   Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([entity])
+  @@index([createdAt])
+}
