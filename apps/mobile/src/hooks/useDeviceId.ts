@@ -1,12 +1,26 @@
 import { useState, useEffect } from "react";
-import * as Device from "expo-device";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const DEVICE_ID_KEY = "salesianos_device_id";
+
+function generateId(): string {
+  return "xxxx-xxxx-xxxx".replace(/x/g, () =>
+    Math.floor(Math.random() * 16).toString(16)
+  );
+}
 
 export function useDeviceId(): string {
   const [deviceId, setDeviceId] = useState("");
 
   useEffect(() => {
-    const id = Device.osInternalBuildId || Device.deviceName || "unknown-device";
-    setDeviceId(id);
+    (async () => {
+      let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
+      if (!id) {
+        id = generateId();
+        await AsyncStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      setDeviceId(id);
+    })();
   }, []);
 
   return deviceId;

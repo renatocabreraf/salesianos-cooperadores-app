@@ -1,14 +1,27 @@
 import * as SQLite from "expo-sqlite";
 
+const API_URL =
+  process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
 let db: SQLite.SQLiteDatabase | null = null;
 
-export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
+export async function getDatabase(database?: SQLite.SQLiteDatabase): Promise<SQLite.SQLiteDatabase> {
+  if (database) {
+    db = database;
+    await initTables(db);
+    await initialSync(db);
+    return db;
+  }
   if (db) return db;
 
   db = await SQLite.openDatabaseAsync("salesianos_cooperadores.db");
+  await initTables(db);
+  await initialSync(db);
+  return db;
+}
 
-  // Create tables
-  await db.execAsync(`
+async function initTables(database: SQLite.SQLiteDatabase) {
+  await database.execAsync(`
     PRAGMA journal_mode = WAL;
 
     CREATE TABLE IF NOT EXISTS pva_sections (
@@ -91,8 +104,66 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
     CREATE INDEX IF NOT EXISTS idx_documents_slug ON documents(slug);
     CREATE INDEX IF NOT EXISTS idx_favorites_device ON favorites(device_id);
   `);
+}
 
-  return db;
+async function initialSync(database: SQLite.SQLiteDatabase) {
+  try {
+    const bookCount = await database.getFirstAsync<any>(
+      "SELECT COUNT(*) as count FROM bible_books"
+    );
+    if (bookCount?.count === 0) {
+      console.log("[DB] Bible empty, syncing from API...");
+      const res = await fetch(`${API_URL}/api/bible`);
+      if (res.ok) {
+        const result = await res.json();
+        const books = result.data || [];
+        if (books.length > 0) {
+          await database.withExclusiveTransactionAsync(async (txn) => {
+            for (const book of books) {
+              await txn.runAsync(
+                "INSERT INTO bible_books (id, name, abbreviation, testament, sort_order) VALUES (?, ?, ?, ?, ?)",
+                book.id, book.name, book.abbreviation, book.testament, book.sortOrder
+              );
+              for (const ch of book.chapters || []) {
+                await txn.runAsync(
+                  "INSERT INTO bible_chapters (id, book_id, chapter_number) VALUES (?, ?, ?)",
+                  ch.id, book.id, ch.chapterNumber
+                );
+              }
+            }
+          });
+          console.log("[DB] Bible synced:", books.length, "books");
+        }
+      }
+    }
+
+    const pvaCount = await database.getFirstAsync<any>(
+      "SELECT COUNT(*) as count FROM pva_sections"
+    );
+    if (pvaCount?.count === 0) {
+      console.log("[DB] PVA empty, syncing from API...");
+      const res = await fetch(`${API_URL}/api/pva`);
+      if (res.ok) {
+        const result = await res.json();
+        const sections = result.data || [];
+        if (sections.length > 0) {
+          await database.withExclusiveTransactionAsync(async (txn) => {
+            for (const s of sections) {
+              await txn.runAsync(
+                `INSERT INTO pva_sections (id, title, slug, content, chapter, article, section, sort_order, parent_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                s.id, s.title, s.slug, s.content, s.chapter,
+                s.article || null, s.section || null, s.sortOrder || 0, s.parentId || null
+              );
+            }
+          });
+          console.log("[DB] PVA synced:", sections.length, "sections");
+        }
+      }
+    }
+  } catch (error) {
+    console.error("[DB] Initial sync error:", error);
+  }
 }
 
 // ==========================================

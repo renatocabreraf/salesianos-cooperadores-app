@@ -9,10 +9,12 @@ export async function GET() {
       id: true,
       title: true,
       slug: true,
+      content: true,
       chapter: true,
       article: true,
       section: true,
       sortOrder: true,
+      parentId: true,
     },
   });
 

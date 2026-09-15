@@ -33,7 +33,9 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      "expo-splash-screen",
+      "expo-sqlite"
     ]
   }
 }

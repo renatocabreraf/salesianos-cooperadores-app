@@ -77,7 +77,10 @@ async function main() {
   console.log("📖 Importando Biblia...");
 
   const filePath = join(process.cwd(), "bible.json");
-  const raw = readFileSync(filePath, "utf-8");
+  console.log(`📄 Archivo: ${filePath}`);
+  const buffer = readFileSync(filePath);
+  const raw = buffer.toString("utf-8");
+  console.log(`📦 Tamaño: ${(raw.length / 1024 / 1024).toFixed(1)}MB`);
   const data = JSON.parse(raw);
 
   console.log(`📚 Encontrados ${data.books.length} libros`);

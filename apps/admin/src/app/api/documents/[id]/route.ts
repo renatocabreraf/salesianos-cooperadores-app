@@ -8,7 +8,7 @@ export async function GET(
 ) {
   const { id } = await params;
 
-  const document = await prisma.document.findUnique({
+  let document = await prisma.document.findUnique({
     where: { id },
     include: {
       category: {
@@ -16,6 +16,17 @@ export async function GET(
       },
     },
   });
+
+  if (!document) {
+    document = await prisma.document.findUnique({
+      where: { slug: id },
+      include: {
+        category: {
+          select: { name: true, slug: true, icon: true },
+        },
+      },
+    });
+  }
 
   if (!document) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

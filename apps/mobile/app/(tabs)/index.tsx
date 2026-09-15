@@ -3,8 +3,8 @@ import { Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 const quickAccess = [
-  { label: "PVA", icon: "book-open" as const, href: "/pva/index", color: "#1e40af" },
-  { label: "Biblia", icon: "book" as const, href: "/bible/index", color: "#7c3aed" },
+  { label: "PVA", icon: "book" as const, href: "/pva", color: "#1e40af" },
+  { label: "Biblia", icon: "book" as const, href: "/bible", color: "#7c3aed" },
   { label: "Biblioteca", icon: "library" as const, href: "/(tabs)/library", color: "#059669" },
   { label: "Mensajes", icon: "chatbubbles" as const, href: "/(tabs)/library", color: "#d97706" },
   { label: "Formación", icon: "school" as const, href: "/(tabs)/library", color: "#dc2626" },

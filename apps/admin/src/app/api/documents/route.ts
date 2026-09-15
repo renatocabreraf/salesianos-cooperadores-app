@@ -3,23 +3,27 @@ import { auth } from "@/lib/auth";
 import prisma from "@/lib/prisma";
 
 export async function GET(request: NextRequest) {
-  const session = await auth();
-  if (!session) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   const { searchParams } = new URL(request.url);
   const page = parseInt(searchParams.get("page") || "1");
   const pageSize = parseInt(searchParams.get("pageSize") || "20");
   const categorySlug = searchParams.get("category");
   const type = searchParams.get("type");
   const search = searchParams.get("search");
+  const all = searchParams.get("all");
 
   const where: any = {};
 
-  if (categorySlug) {
-    where.category = { slug: categorySlug };
+  if (all !== "true" && categorySlug) {
+    const category = await prisma.category.findUnique({
+      where: { slug: categorySlug },
+    });
+    if (category) {
+      where.categoryId = category.id;
+    } else {
+      where.category = { slug: categorySlug };
+    }
   }
+
   if (type) {
     where.type = type;
   }

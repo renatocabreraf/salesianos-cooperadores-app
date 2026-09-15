@@ -29,7 +29,7 @@ export default function FavoritesScreen() {
       case "document":
         return "document-text";
       case "pva":
-        return "book-open";
+        return "book";
       case "bible_verse":
         return "book";
       default:

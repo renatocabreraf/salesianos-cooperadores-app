@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Share } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { addFavorite, isFavorite } from "../../../src/database";
 import { useDeviceId } from "../../../src/hooks/useDeviceId";
@@ -52,9 +52,12 @@ export default function DocumentDetailScreen() {
     });
   };
 
-  const handleDownload = () => {
-    // TODO: Implement PDF download for offline
-    alert("Descarga offline próximamente disponible");
+  const handleOpenPdf = () => {
+    if (!doc?.fileUrl) return;
+    router.push({
+      pathname: "/pdf",
+      params: { url: doc.fileUrl, title: doc.title },
+    });
   };
 
   if (loading) {
@@ -108,10 +111,10 @@ export default function DocumentDetailScreen() {
           <View style={styles.downloadSection}>
             <TouchableOpacity
               style={styles.downloadButton}
-              onPress={handleDownload}
+              onPress={handleOpenPdf}
             >
-              <Ionicons name="download" size={20} color="#fff" />
-              <Text style={styles.downloadText}>Descargar PDF</Text>
+              <Ionicons name="document-text" size={20} color="#fff" />
+              <Text style={styles.downloadText}>Leer PDF</Text>
             </TouchableOpacity>
           </View>
         )}

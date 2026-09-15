@@ -3,11 +3,12 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from "react-nati
 import { useLocalSearchParams, Link } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
+const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
+
 export default function CategoryScreen() {
   const { categorySlug } = useLocalSearchParams<{ categorySlug: string }>();
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [categoryName, setCategoryName] = useState("");
 
   useEffect(() => {
     loadDocuments();
@@ -15,19 +16,19 @@ export default function CategoryScreen() {
 
   const loadDocuments = async () => {
     try {
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:3000";
-      const res = await fetch(
-        `${API_URL}/api/documents?category=${categorySlug}`
-      );
-      const data = await res.json();
-      setDocuments(data.data || []);
+      let res = await fetch(`${API_URL}/api/documents?category=${categorySlug}`);
+      let result = await res.json();
+      let docs = result.data || [];
 
-      // Get category name from first doc
-      if (data.data?.length > 0) {
-        setCategoryName(data.data[0].category?.name || "");
+      if (docs.length === 0) {
+        res = await fetch(`${API_URL}/api/documents?all=true`);
+        result = await res.json();
+        docs = result.data || [];
       }
-    } catch (error) {
-      console.error("Error:", error);
+
+      setDocuments(docs);
+    } catch (err) {
+      console.error("[Docs] Error:", err);
     } finally {
       setLoading(false);
     }
@@ -35,20 +36,13 @@ export default function CategoryScreen() {
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case "mensaje":
-        return "chatbubbles";
-      case "directorio":
-        return "book";
-      case "circular":
-        return "megaphone";
-      case "reglamento":
-        return "document-text";
-      case "formacion":
-        return "school";
-      case "comunicado":
-        return "megaphone";
-      default:
-        return "document";
+      case "mensaje": return "chatbubbles";
+      case "directorio": return "book";
+      case "circular": return "megaphone";
+      case "reglamento": return "document-text";
+      case "formacion": return "school";
+      case "comunicado": return "megaphone";
+      default: return "document";
     }
   };
 
@@ -67,7 +61,7 @@ export default function CategoryScreen() {
           <Ionicons name="document-text-outline" size={48} color="#cbd5e1" />
           <Text style={styles.emptyTitle}>Sin documentos</Text>
           <Text style={styles.emptyDescription}>
-            No hay documentos disponibles en esta categoría
+            No hay documentos disponibles
           </Text>
         </View>
       ) : (
@@ -86,14 +80,14 @@ export default function CategoryScreen() {
                 />
                 <View style={styles.docContent}>
                   <Text style={styles.docTitle}>{doc.title}</Text>
-                  {doc.description && (
+                  {doc.description ? (
                     <Text style={styles.docDescription} numberOfLines={2}>
                       {doc.description}
                     </Text>
-                  )}
+                  ) : null}
                   <View style={styles.docMeta}>
-                    {doc.author && (
-                      <Text style={styles.docAuthor}>{doc.author}</Text>
+                    {doc.category?.name && (
+                      <Text style={styles.docAuthor}>{doc.category.name}</Text>
                     )}
                     {doc.publishedAt && (
                       <Text style={styles.docDate}>
@@ -117,68 +111,16 @@ export default function CategoryScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#f8fafc",
-  },
-  center: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#334155",
-    marginTop: 16,
-  },
-  emptyDescription: {
-    fontSize: 14,
-    color: "#94a3b8",
-    textAlign: "center",
-    marginTop: 8,
-  },
-  list: {
-    padding: 16,
-  },
-  docCard: {
-    backgroundColor: "#fff",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    flexDirection: "row",
-    alignItems: "flex-start",
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  docContent: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  docTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#0f172a",
-    marginBottom: 4,
-  },
-  docDescription: {
-    fontSize: 13,
-    color: "#64748b",
-    lineHeight: 18,
-  },
-  docMeta: {
-    flexDirection: "row",
-    gap: 12,
-    marginTop: 8,
-  },
-  docAuthor: {
-    fontSize: 12,
-    color: "#1e40af",
-    fontWeight: "500",
-  },
-  docDate: {
-    fontSize: 12,
-    color: "#94a3b8",
-  },
+  container: { flex: 1, backgroundColor: "#f8fafc" },
+  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingVertical: 60 },
+  emptyTitle: { fontSize: 18, fontWeight: "600", color: "#334155", marginTop: 16 },
+  emptyDescription: { fontSize: 14, color: "#94a3b8", textAlign: "center", marginTop: 8 },
+  list: { padding: 16 },
+  docCard: { backgroundColor: "#fff", borderRadius: 12, padding: 16, marginBottom: 12, flexDirection: "row", alignItems: "flex-start", borderWidth: 1, borderColor: "#e2e8f0" },
+  docContent: { flex: 1, marginLeft: 12 },
+  docTitle: { fontSize: 15, fontWeight: "600", color: "#0f172a", marginBottom: 4 },
+  docDescription: { fontSize: 13, color: "#64748b", lineHeight: 18 },
+  docMeta: { flexDirection: "row", gap: 12, marginTop: 8 },
+  docAuthor: { fontSize: 12, color: "#1e40af", fontWeight: "500" },
+  docDate: { fontSize: 12, color: "#94a3b8" },
 });

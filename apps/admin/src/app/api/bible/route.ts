@@ -5,8 +5,13 @@ import prisma from "@/lib/prisma";
 export async function GET() {
   const books = await prisma.bibleBook.findMany({
     include: {
-      _count: {
-        select: { chapters: true },
+      chapters: {
+        orderBy: { chapterNumber: "asc" },
+        select: {
+          id: true,
+          chapterNumber: true,
+          _count: { select: { verses: true } },
+        },
       },
     },
     orderBy: { sortOrder: "asc" },
